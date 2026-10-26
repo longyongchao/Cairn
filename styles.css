@@ -1,0 +1,33 @@
+/* 便签窗口：隐藏标题和属性区，紧凑字号，浅色主题下为便签黄 */
+body.sticky-log .inline-title,
+body.sticky-log .metadata-container {
+  display: none;
+}
+body.sticky-log .markdown-source-view,
+body.sticky-log .markdown-preview-view {
+  font-size: 0.92em;
+  --file-line-width: 100%;
+}
+body.sticky-log.theme-light .view-content {
+  background: #fff8c5;
+}
+body.sticky-log.theme-dark .view-content {
+  background: #3a3622;
+}
+
+/* 折叠为横条：只留视图标题栏，横条空白处可拖动窗口，标题和按钮可点击 */
+body.sticky-collapsed .workspace-tab-header-container,
+body.sticky-collapsed .view-content {
+  display: none;
+}
+body.sticky-collapsed .view-header {
+  -webkit-app-region: drag;
+}
+body.sticky-collapsed .view-header-title-container,
+body.sticky-collapsed .view-actions,
+body.sticky-collapsed .view-header-nav-buttons {
+  -webkit-app-region: no-drag;
+}
+body.sticky-collapsed .view-header-title-container {
+  cursor: pointer;
+}

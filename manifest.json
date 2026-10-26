@@ -1,7 +1,7 @@
 {
 	"id": "sticky-log",
 	"name": "Sticky Log",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"minAppVersion": "1.0.0",
 	"description": "点击项目卡片的 log 属性，以置顶小窗口（便签）打开项目日志。",
 	"author": "local",

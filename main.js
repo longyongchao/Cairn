@@ -3,6 +3,8 @@ const { Plugin, Notice, Menu, normalizePath, getLinkpath, setIcon } = require("o
 const LOG_KEY = "log";
 const LOG_FOLDER = "logs";
 const SIZE = { width: 380, height: 520 };
+// 固定用实时预览：纯源码模式下属性会以 YAML 文本显示，无法隐藏
+const VIEW_STATE = { mode: "source", source: false };
 
 // Obsidian 不同版本暴露 remote 的方式不同，两种都试
 const getRemote = () => {
@@ -14,6 +16,7 @@ const getRemote = () => {
     }
     return null;
 };
+const DRAG_THRESHOLD = 4; // 横条上按下后移动超过这么多像素才算拖动，否则视为点击
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const linkOf = (raw) => String(raw).replace(/^\[\[|\]\]$/g, "").split("|")[0];
 
@@ -101,19 +104,21 @@ module.exports = class StickyLogPlugin extends Plugin {
         const remote = getRemote();
         const before = new Set(remote ? remote.BrowserWindow.getAllWindows().map((w) => w.id) : []);
         const leaf = this.app.workspace.openPopoutLeaf({ size: SIZE });
-        await leaf.openFile(file, { active: true, state: { mode: "source" } });
+        await leaf.openFile(file, { active: true, state: VIEW_STATE });
         // 必须在 openFile 之后取窗口：之前 view 还没挂到弹出窗口，拿到的会是主窗口
         const win = leaf.getContainer?.()?.win ?? leaf.view.containerEl.win;
         if (win === window) return new Notice("便签窗口创建失败");
-        const s = { win, bw: null, btns: new Set(), collapsed: false, height: SIZE.height };
+        const s = { win, bw: null, btns: new Set(), collapsed: false, height: SIZE.height, eatClick: false };
         this.wins.set(win, s);
         win.document.body.addClass("sticky-log");
-        // 折叠状态下点击横条上的标题即展开
+        // 折叠状态下：横条上按下后移动＝拖动窗口，原地松开＝展开
+        this.registerDomEvent(win.document, "pointerdown", (e) => this.onBarPointerDown(e, s), true);
+        // 吞掉按下/松开之后浏览器补发的 click，免得触发标题重命名等默认行为
         this.registerDomEvent(win.document, "click", (e) => {
-            if (!s.collapsed || !e.target?.closest?.(".view-header-title-container")) return;
+            if (!s.eatClick) return;
+            s.eatClick = false;
             e.preventDefault();
             e.stopImmediatePropagation();
-            this.toggleCollapse(s);
         }, true);
         this.decorateAll();
 
@@ -131,6 +136,39 @@ module.exports = class StickyLogPlugin extends Plugin {
             await sleep(50);
         }
         new Notice("已打开日志窗口，但未能置顶");
+    }
+
+    onBarPointerDown(e, s) {
+        const t = e.target;
+        if (!s.collapsed || e.button !== 0 || !t?.closest?.(".view-header")) return;
+        if (t.closest(".view-actions, .view-header-nav-buttons, .clickable-icon")) return; // 按钮照常可点
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        const doc = s.win.document;
+        const [wx, wy] = s.bw ? s.bw.getPosition() : [s.win.screenX, s.win.screenY];
+        const sx = e.screenX, sy = e.screenY;
+        let dragging = false;
+        // 捕获指针：拖得快、光标暂时离开横条时也能持续收到移动事件
+        t.setPointerCapture?.(e.pointerId);
+        const move = (ev) => {
+            const dx = ev.screenX - sx, dy = ev.screenY - sy;
+            if (!dragging && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+            dragging = true;
+            const x = Math.round(wx + dx), y = Math.round(wy + dy);
+            if (s.bw) s.bw.setPosition(x, y);
+            else s.win.moveTo(x, y);
+        };
+        const up = () => {
+            doc.removeEventListener("pointermove", move, true);
+            doc.removeEventListener("pointerup", up, true);
+            doc.removeEventListener("pointercancel", up, true);
+            s.eatClick = true;
+            setTimeout(() => { s.eatClick = false; }, 300); // 拖到横条外松开时不会有 click
+            if (!dragging) this.toggleCollapse(s);
+        };
+        doc.addEventListener("pointermove", move, true);
+        doc.addEventListener("pointerup", up, true);
+        doc.addEventListener("pointercancel", up, true);
     }
 
     // 插件代码运行在主窗口的渲染进程里，getCurrentWindow 拿到的就是主窗口
@@ -189,7 +227,7 @@ module.exports = class StickyLogPlugin extends Plugin {
         if (old) return this.focusLeaf(old);
         const parent = leaf.parent;
         const tab = this.app.workspace.createLeafInParent(parent, parent.children.length);
-        await tab.openFile(file, { active: true, state: { mode: "source" } });
+        await tab.openFile(file, { active: true, state: VIEW_STATE });
         this.decorateAll();
         this.focusLeaf(tab);
     }

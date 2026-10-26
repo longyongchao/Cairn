@@ -1,33 +1,31 @@
-/* 便签窗口：隐藏标题和属性区，紧凑字号，浅色主题下为便签黄 */
+/* 便签窗口：沿用主窗口主题，隐藏标题和笔记属性，紧凑字号 */
 body.sticky-log .inline-title,
-body.sticky-log .metadata-container {
-  display: none;
+body.sticky-log .metadata-container,
+body.sticky-log .frontmatter-container,
+body.sticky-log .markdown-preview-view .frontmatter {
+  display: none !important;
 }
 body.sticky-log .markdown-source-view,
 body.sticky-log .markdown-preview-view {
   font-size: 0.92em;
   --file-line-width: 100%;
 }
-body.sticky-log.theme-light .view-content {
-  background: #fff8c5;
-}
-body.sticky-log.theme-dark .view-content {
-  background: #3a3622;
-}
 
-/* 折叠为横条：只留视图标题栏，横条空白处可拖动窗口，标题和按钮可点击 */
+/* 折叠为横条：只留视图标题栏。拖动/点击展开由插件自己处理，
+   必须关掉系统拖动区，否则按下事件会被系统吞掉 */
 body.sticky-collapsed .workspace-tab-header-container,
 body.sticky-collapsed .view-content {
   display: none;
 }
-body.sticky-collapsed .view-header {
-  -webkit-app-region: drag;
-}
-body.sticky-collapsed .view-header-title-container,
-body.sticky-collapsed .view-actions,
-body.sticky-collapsed .view-header-nav-buttons {
+body.sticky-collapsed .view-header,
+body.sticky-collapsed .view-header * {
   -webkit-app-region: no-drag;
 }
-body.sticky-collapsed .view-header-title-container {
-  cursor: pointer;
+body.sticky-collapsed .view-header {
+  cursor: grab;
+  user-select: none;
+}
+body.sticky-collapsed .view-actions,
+body.sticky-collapsed .view-header-nav-buttons {
+  cursor: default;
 }

@@ -272,3 +272,23 @@ body.sticky-collapsed[data-sticky-timer="done"] .view-header {
   margin-bottom: 8px;
   font-size: var(--font-ui-medium);
 }
+
+/* 在跑任务 [/] 的复选框：Obsidian 把空格以外的状态字符都画成已勾选，
+   这里改成左半填充的蓝色方框，并去掉已完成的删除线和淡化 */
+.task-list-item-checkbox[data-task="/"]:checked,
+li[data-task="/"] > .task-list-item-checkbox:checked,
+.HyperMD-task-line[data-task="/"] .task-list-item-checkbox:checked {
+  background: linear-gradient(90deg, rgb(var(--color-blue-rgb)) 50%, transparent 50%);
+  border-color: rgb(var(--color-blue-rgb));
+}
+.task-list-item-checkbox[data-task="/"]:checked::after,
+li[data-task="/"] > .task-list-item-checkbox:checked::after,
+.HyperMD-task-line[data-task="/"] .task-list-item-checkbox:checked::after {
+  display: none;
+}
+/* 已完成的删除线和淡化都取自这两个变量，在 [/] 行上覆盖掉 */
+.HyperMD-task-line[data-task="/"],
+.task-list-item[data-task="/"] {
+  --checklist-done-decoration: none;
+  --checklist-done-color: var(--text-normal);
+}

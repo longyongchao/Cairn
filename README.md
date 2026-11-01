@@ -100,17 +100,14 @@ Cairn 写进笔记的所有东西都是普通 Markdown 文本，不是链接，�
 
 ## 安装
 
-Cairn 还没有上架 Obsidian 社区插件市场，目前需要手动安装：
+Cairn 还没有上架 Obsidian 社区插件市场，目前可以这样安装：
 
-1. 在 vault 的 `.obsidian/plugins/` 下新建文件夹 `cairn`。
-2. 把本仓库的 `main.js`、`manifest.json`、`styles.css` 放进去。
-3. 重启 Obsidian，在 设置 → 第三方插件 里启用 Cairn。
-
-也可以用 [BRAT](https://github.com/TfTHacker/obsidian42-brat) 插件，填入 `longyongchao/Cairn` 安装。
+- **BRAT**：装好 [BRAT](https://github.com/TfTHacker/obsidian42-brat) 插件后，选择 Add Beta plugin，填入 `longyongchao/Cairn`。
+- **手动**：从 [Releases](https://github.com/longyongchao/Cairn/releases) 下载最新版的 `main.js`、`manifest.json`、`styles.css`，放进 vault 的 `.obsidian/plugins/cairn/`，重启 Obsidian，在 设置 → 第三方插件 里启用 Cairn。
 
 ## 使用约定
 
-Cairn 按下面的约定识别项目和日志：
+Cairn 默认按下面的约定识别项目和日志，每一条都可以在设置里改：
 
 - **项目笔记**：frontmatter 里有 `type: project`，并用 `log` 属性指向它的日志。
 
@@ -124,6 +121,21 @@ Cairn 按下面的约定识别项目和日志：
 - 设置了 `archived: true` 的项目不出现在列表里，`_templates/` 下的笔记也会被忽略。
 - `log` 指向的文件不存在时，Cairn 会在 `logs/` 下自动新建一个日志。
 - 日志就是普通笔记，用 `- [ ]` 写任务即可。
+
+## 设置
+
+| 设置 | 默认值 | 说明 |
+|---|---|---|
+| 项目笔记的识别属性 | `type` = `project` | 属性值是列表时，包含该值即可 |
+| 日志属性 | `log` | 项目笔记里指向日志的属性 |
+| 归档属性 | `archived` | 为 `true` 的项目不出现在列表里 |
+| 日志文件夹 | `logs` | 日志不存在时新建到这里 |
+| 排除的文件夹 | `_templates` | 多个用逗号分隔，留空则不排除 |
+| 杂念记到哪个小节 | `## 待整理` | 没有这个小节就在日志末尾新建 |
+| 菜单里的专注时长 | `15, 25, 45, 60` | 单位分钟，上次用过的时长会自动补进菜单 |
+| 完成时播放提示音 | 开 | 番茄钟菜单里也能切换 |
+
+除「排除的文件夹」外，清空某一项就会恢复默认值。
 
 ## 命令
 

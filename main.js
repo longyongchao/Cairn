@@ -1,11 +1,19 @@
 const {
-    Plugin, Modal, Notice, Menu, MarkdownView, normalizePath, getLinkpath, setIcon, setTooltip,
+    Plugin, PluginSettingTab, Setting, Modal, Notice, Menu, MarkdownView, normalizePath, getLinkpath, setIcon, setTooltip,
     editorLivePreviewField, editorInfoField,
 } = require("obsidian");
 const { ViewPlugin, Decoration, WidgetType, EditorView } = require("@codemirror/view");
 
-const LOG_KEY = "log";
-const LOG_FOLDER = "logs";
+// 设置页里可改的约定，默认值就是作者自己仓库的写法
+const SETTINGS = {
+    projectKey: "type", projectValue: "project", // 项目笔记的识别属性：type: project
+    archivedKey: "archived", // 该属性为 true 的项目不出现在列表里
+    logKey: "log", // 项目笔记里指向日志的属性
+    logFolder: "logs", // 日志不存在时新建到这里
+    excludeFolders: "_templates", // 不扫描的文件夹，逗号分隔
+    parkHeading: "## 待整理", // 杂念记到日志里的这个小节
+    presets: "15, 25, 45, 60", // 番茄钟菜单里的专注时长（分钟）
+};
 const SIZE = { width: 380, height: 520 };
 // 固定用实时预览：纯源码模式下属性会以 YAML 文本显示，无法隐藏
 const VIEW_STATE = { mode: "source", source: false };
@@ -24,8 +32,7 @@ const DRAG_THRESHOLD = 4; // 横条上按下后移动超过这么多像素才算
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const linkOf = (raw) => String(raw).replace(/^\[\[|\]\]$/g, "").split("|")[0];
 
-const PRESETS = [15, 25, 45, 60]; // 番茄钟菜单里的专注时长（分钟）
-const DEFAULTS = { lastMinutes: 25, lastWaitHours: 1, sound: true, timer: null, notified: [], stickyWindows: [] };
+const DEFAULTS = { ...SETTINGS, lastMinutes: 25, lastWaitHours: 1, sound: true, timer: null, notified: [], stickyWindows: [] };
 const pad = (n) => String(n).padStart(2, "0");
 const clock = (sec) => {
     const h = Math.floor(sec / 3600), m = Math.floor(sec / 60) % 60, s = sec % 60;
@@ -40,7 +47,6 @@ const POMO_RE = /🍅\[(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})-(\d{2}:\d{2}) (\d+)m\]/
 const WAIT_RE = /⏰\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2})\]/u;
 const MARK_RE = new RegExp(`${POMO_RE.source}|${WAIT_RE.source}`, "gu");
 const NEXT_RE = /^\s*[-*+] 👉 ?(.*)$/u; // 任务下面的「下一步」子项
-const PARK_HEADING = "## 待整理";
 const TASK_LINE = /^\s*[-*+] \[.\]/;
 const DONE_LINE = /^\s*[-*+] \[[xX-]\]/;
 // Tasks 插件的字段（优先级、日期、重复、依赖）、在跑标记和块 id 留在行尾，番茄记录插到它们前面
@@ -112,11 +118,11 @@ const nextStepLine = (lines, i) => {
     return -1;
 };
 // 杂念记到「待整理」小节末尾，没有这个小节就在文末新建
-const appendParked = (lines, item) => {
-    const h = lines.findIndex((l) => l.trim() === PARK_HEADING);
+const appendParked = (lines, item, heading) => {
+    const h = lines.findIndex((l) => l.trim() === heading);
     if (h < 0) {
         while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
-        lines.push("", PARK_HEADING, item, "");
+        lines.push("", heading, item, "");
         return lines;
     }
     let end = h + 1;
@@ -358,9 +364,53 @@ class TextModal extends Modal {
     }
 }
 
-module.exports = class StickyLogPlugin extends Plugin {
+// ---- 设置页 ----
+// 文本项随输入即时保存；除「排除的文件夹」外，留空的项在使用时退回默认值（见 opt）
+class CairnSettingTab extends PluginSettingTab {
+    constructor(app, plugin) { super(app, plugin); this.plugin = plugin; }
+
+    display() {
+        const { containerEl } = this, p = this.plugin;
+        containerEl.empty();
+        const text = (name, desc, key, placeholder = SETTINGS[key]) => new Setting(containerEl).setName(name).setDesc(desc)
+            .addText((t) => t.setPlaceholder(placeholder).setValue(p.data[key] ?? "").onChange((v) => {
+                p.data[key] = v.trim();
+                p.saveData(p.data);
+            }));
+
+        new Setting(containerEl).setName("项目与日志").setHeading();
+        new Setting(containerEl).setName("项目笔记的识别属性")
+            .setDesc("frontmatter 里这个属性等于这个值的笔记算项目，例如 type: project。属性值是列表时，包含该值即可。")
+            .addText((t) => t.setPlaceholder(SETTINGS.projectKey).setValue(p.data.projectKey ?? "").onChange((v) => {
+                p.data.projectKey = v.trim();
+                p.saveData(p.data);
+            }))
+            .addText((t) => t.setPlaceholder(SETTINGS.projectValue).setValue(p.data.projectValue ?? "").onChange((v) => {
+                p.data.projectValue = v.trim();
+                p.saveData(p.data);
+            }));
+        text("日志属性", "项目笔记里指向日志的属性，值是一个内部链接，例如 log: \"[[项目 log]]\"。", "logKey");
+        text("归档属性", "这个属性为 true 的项目不出现在项目列表里。", "archivedKey");
+        text("日志文件夹", "日志链接指向的文件不存在时，在这里新建。", "logFolder");
+        text("排除的文件夹", "扫描项目时跳过这些文件夹，多个用逗号分隔，例如模板文件夹。留空则不排除。", "excludeFolders", "例如 _templates");
+
+        new Setting(containerEl).setName("杂念").setHeading();
+        text("记到哪个小节", "杂念追加到日志里这个标题下面，没有就在文末新建。需要包含 # 号。", "parkHeading");
+
+        new Setting(containerEl).setName("番茄钟").setHeading();
+        text("菜单里的专注时长", "单位分钟，用逗号分隔。上次用过的时长会自动补进菜单。", "presets");
+        new Setting(containerEl).setName("完成时播放提示音")
+            .addToggle((t) => t.setValue(p.data.sound).onChange((v) => {
+                p.data.sound = v;
+                p.saveData(p.data);
+            }));
+    }
+}
+
+module.exports = class CairnPlugin extends Plugin {
     async onload() {
         this.data = Object.assign({}, DEFAULTS, await this.loadData());
+        this.addSettingTab(new CairnSettingTab(this.app, this));
         this.wins = new Map(); // 便签窗口 window -> { win, bw, btns, chips, tick, collapsed, height }
         this.decorated = new WeakSet(); // 已加过按钮的 view
         document.body.removeClass("sticky-log", "sticky-collapsed"); // 主窗口永远不是便签
@@ -409,6 +459,17 @@ module.exports = class StickyLogPlugin extends Plugin {
         this.registerDomEvent(window, "beforeunload", () => { this.tray?.destroy(); this.tray = null; });
     }
 
+    // 设置项留空时退回默认值，免得清空输入框后整个插件失灵
+    opt(key) {
+        const v = String(this.data[key] ?? "").trim();
+        return v || SETTINGS[key];
+    }
+
+    presets() {
+        const list = this.opt("presets").split(/[,，\s]+/).map(Number).filter((m) => m > 0 && m <= 600);
+        return [...new Set(list.length ? list : SETTINGS.presets.split(", ").map(Number))].sort((a, b) => a - b);
+    }
+
     // 停用插件时清掉便签样式类，避免残留（包括上个版本误加到主窗口上的）
     onunload() {
         for (const doc of [document, ...[...this.wins.keys()].map((w) => w.document)])
@@ -428,7 +489,7 @@ module.exports = class StickyLogPlugin extends Plugin {
         if (e.button !== 0 || e.metaKey || e.ctrlKey) return;
         const t = e.target;
         if (!t?.closest) return;
-        const prop = t.closest(`.metadata-property[data-property-key="${LOG_KEY}"]`);
+        const prop = t.closest(`.metadata-property[data-property-key="${CSS.escape(this.opt("logKey"))}"]`);
         const link = prop && t.closest(".internal-link, .metadata-link-inner");
         if (!link) return;
         e.preventDefault();
@@ -446,8 +507,9 @@ module.exports = class StickyLogPlugin extends Plugin {
 
     openFromActive() {
         const file = this.app.workspace.getActiveFile();
-        const raw = file && this.app.metadataCache.getFileCache(file)?.frontmatter?.[LOG_KEY];
-        if (!raw) return new Notice("当前笔记没有 log 属性");
+        const key = this.opt("logKey");
+        const raw = file && this.app.metadataCache.getFileCache(file)?.frontmatter?.[key];
+        if (!raw) return new Notice(`当前笔记没有 ${key} 属性`);
         this.openSticky(linkOf(raw), file.path);
     }
 
@@ -607,13 +669,17 @@ module.exports = class StickyLogPlugin extends Plugin {
 
     // 所有带 log 的未归档项目，最近改过的在前；dest 是日志文件（还没建时为 null）
     projectLogs() {
+        const o = (k) => this.opt(k), key = o("logKey");
+        const skip = String(this.data.excludeFolders ?? "").split(/[,，]/).map((s) => normalizePath(s.trim())).filter((s) => s && s !== "/");
         return this.app.vault.getMarkdownFiles()
-            .filter((f) => !f.path.startsWith("_templates/"))
+            .filter((f) => !skip.some((d) => f.path.startsWith(d + "/")))
             .map((f) => ({ f, fm: this.app.metadataCache.getFileCache(f)?.frontmatter }))
-            .filter(({ fm }) => fm?.type === "project" && fm.archived !== true && fm[LOG_KEY])
+            // 属性值可能是列表（type: [project, xxx]），也可能被写成数字等非字符串
+            .filter(({ fm }) => fm && [fm[o("projectKey")]].flat().map(String).includes(o("projectValue"))
+                && fm[o("archivedKey")] !== true && fm[key])
             .sort((a, b) => b.f.stat.mtime - a.f.stat.mtime)
             .map(({ f, fm }) => {
-                const link = linkOf(fm[LOG_KEY]);
+                const link = linkOf(fm[key]);
                 const dest = this.app.metadataCache.getFirstLinkpathDest(getLinkpath(link), f.path);
                 const n = this.openTodos(dest);
                 // 原生菜单只能显示纯文本，数量以 [n] 前缀标出；日志还没建时不加
@@ -624,7 +690,7 @@ module.exports = class StickyLogPlugin extends Plugin {
     // 列出所有未归档项目，选中后在当前便签窗口新开标签页（已打开则切过去）
     pickLog(evt, leaf) {
         const current = leaf.view?.file?.path, items = this.projectLogs();
-        if (!items.length) return new Notice("没有带 log 属性的未归档项目");
+        if (!items.length) return new Notice(`没有带 ${this.opt("logKey")} 属性的未归档项目`);
         const menu = new Menu();
         for (const { f, link, dest, title } of items)
             menu.addItem((it) => it.setTitle(title).setIcon("folder")
@@ -688,13 +754,18 @@ module.exports = class StickyLogPlugin extends Plugin {
         }
     }
 
-    // log 指向的文件不存在时，在 logs 下按模板新建
+    // log 指向的文件不存在时，在日志文件夹下按模板新建（文件夹可以多级）
     async createLog(linkpath, src) {
-        if (!this.app.vault.getAbstractFileByPath(LOG_FOLDER)) await this.app.vault.createFolder(LOG_FOLDER);
+        const folder = normalizePath(this.opt("logFolder"));
+        let dir = "";
+        for (const part of folder.split("/")) {
+            dir = dir ? `${dir}/${part}` : part;
+            if (!this.app.vault.getAbstractFileByPath(dir)) await this.app.vault.createFolder(dir);
+        }
         const project = src.split("/").pop().replace(/\.md$/, "");
         const date = window.moment().format("YYYY-MM-DD");
         const name = linkpath.split("/").pop();
-        const file = await this.app.vault.create(normalizePath(`${LOG_FOLDER}/${name}.md`),
+        const file = await this.app.vault.create(normalizePath(`${folder}/${name}.md`),
             `---\ntype: log\nproject: "[[${project}]]"\ncreated: ${date}\n---\n\n- [ ] \n`);
         new Notice(`已新建日志：${file.path}`);
         return file;
@@ -729,7 +800,8 @@ module.exports = class StickyLogPlugin extends Plugin {
             if (!byWin.has(c)) byWin.set(c, []);
             byWin.get(c).push(l);
         });
-        const isLog = (l) => (l.view?.file?.path ?? l.getViewState().state?.file ?? "").startsWith(`${LOG_FOLDER}/`);
+        const folder = normalizePath(this.opt("logFolder")) + "/";
+        const isLog = (l) => (l.view?.file?.path ?? l.getViewState().state?.file ?? "").startsWith(folder);
         return [...byWin].filter(([c, leaves]) => ids.has(c.id) || (legacy && leaves.every(isLog)))
             .flatMap(([, leaves]) => leaves);
     }
@@ -997,13 +1069,14 @@ module.exports = class StickyLogPlugin extends Plugin {
         const path = view?.file?.path || (t?.kind === "focus" && t.task?.path)
             || this.app.workspace.getActiveViewOfType(MarkdownView)?.file?.path;
         if (!path) return new Notice("先打开一个日志");
+        const heading = this.opt("parkHeading");
         await this.expand();
         new TextModal(this.app, {
             title: "记一条杂念", cta: "记下",
             placeholder: "想到什么写什么，写完回到手头的事",
-            hint: `记到「${path.split("/").pop().replace(/\.md$/, "")}」的「待整理」，休息时再处理`,
+            hint: `记到「${path.split("/").pop().replace(/\.md$/, "")}」的「${heading.replace(/^#+\s*/, "")}」，休息时再处理`,
             onSubmit: async (text) => {
-                if (text && await this.editLines(path, (lines) => appendParked(lines, `- [ ] ${text}`)))
+                if (text && await this.editLines(path, (lines) => appendParked(lines, `- [ ] ${text}`, heading)))
                     new Notice("💡 已记下");
             },
         }).open();
@@ -1164,7 +1237,8 @@ module.exports = class StickyLogPlugin extends Plugin {
             menu.addSeparator();
         }
         if (!t) {
-            const presets = PRESETS.includes(last) ? PRESETS : [...PRESETS, last].sort((a, b) => a - b);
+            const list = this.presets();
+            const presets = list.includes(last) ? list : [...list, last].sort((a, b) => a - b);
             for (const m of presets)
                 menu.addItem((it) => it.setTitle(`专注 ${m} 分钟`).setIcon("timer")
                     .setChecked(m === last).onClick(() => start(m)));

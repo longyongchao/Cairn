@@ -1,9 +1,9 @@
 {
 	"id": "cairn",
 	"name": "Cairn",
-	"version": "0.6.0",
+	"version": "0.7.0",
 	"minAppVersion": "1.5.7",
-	"description": "把活交给 AI 之后，从容地接回来：置顶便签日志、番茄钟、在跑提醒、下一步、杂念，以及菜单栏入口。",
+	"description": "Hand work off to AI and pick it back up calmly: a pinned log note, pomodoro timer, wait reminders, next steps, and a thought inbox.",
 	"author": "longyongchao",
 	"authorUrl": "https://github.com/longyongchao",
 	"isDesktopOnly": true

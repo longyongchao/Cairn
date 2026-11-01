@@ -29,3 +29,246 @@ body.sticky-collapsed .view-actions,
 body.sticky-collapsed .view-header-nav-buttons {
   cursor: default;
 }
+
+
+/* ---- 番茄钟 ----
+   状态写在 data-sticky-timer 上：focus 专注（红）/ break 休息（蓝）/ paused 暂停（黄）/ done 已结束（绿） */
+[data-sticky-timer="focus"] { --sticky-timer-rgb: var(--color-red-rgb); }
+[data-sticky-timer="break"] { --sticky-timer-rgb: var(--color-blue-rgb); }
+[data-sticky-timer="paused"] { --sticky-timer-rgb: var(--color-yellow-rgb); }
+[data-sticky-timer="done"] { --sticky-timer-rgb: var(--color-green-rgb); }
+
+/* 倒计时胶囊：标题栏和主窗口状态栏共用 */
+.sticky-timer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  margin-right: 4px;
+  padding: 0 8px 0 6px;
+  border-radius: 11px;
+  background: rgba(var(--sticky-timer-rgb), 0.13);
+  color: rgb(var(--sticky-timer-rgb));
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+.sticky-timer-chip:not([data-sticky-timer]) {
+  display: none !important;
+}
+.sticky-timer-chip:hover {
+  background: rgba(var(--sticky-timer-rgb), 0.22);
+}
+.sticky-timer-icon {
+  display: flex;
+}
+.sticky-timer-icon svg {
+  width: 13px;
+  height: 13px;
+  stroke-width: 2.4;
+}
+/* 结束后变实色并呼吸几次，之后保持实色，直到手动处理 */
+.sticky-timer-chip[data-sticky-timer="done"] {
+  background: rgb(var(--sticky-timer-rgb));
+  color: var(--text-on-accent);
+  animation: sticky-timer-pulse 1.6s ease-in-out 8;
+}
+.sticky-timer-chip[data-sticky-timer="paused"] .sticky-timer-text {
+  opacity: 0.75;
+}
+/* 计时期间胶囊顶替番茄钟按钮 */
+body[data-sticky-timer] .sticky-timer-btn {
+  display: none;
+}
+
+/* 标题栏底部的进度线 */
+body.sticky-log[data-sticky-timer] .view-header {
+  position: relative;
+}
+body.sticky-log[data-sticky-timer] .view-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: calc(var(--sticky-timer-progress, 0) * 100%);
+  background: rgb(var(--sticky-timer-rgb));
+  transition: width 1s linear, background-color 0.3s ease;
+  pointer-events: none;
+}
+/* 折叠横条整条着色，远远瞥一眼就能看出状态 */
+body.sticky-collapsed[data-sticky-timer] .view-header {
+  background: rgba(var(--sticky-timer-rgb), 0.1);
+  transition: background-color 0.3s ease;
+}
+body.sticky-collapsed[data-sticky-timer="done"] .view-header {
+  background: rgba(var(--sticky-timer-rgb), 0.24);
+}
+
+@keyframes sticky-timer-pulse {
+  50% { opacity: 0.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sticky-timer-chip { animation: none !important; }
+}
+
+/* 自定义时长对话框 */
+.sticky-timer-modal {
+  width: min(340px, calc(100vw - 32px));
+}
+.sticky-timer-kind {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  margin-bottom: 18px;
+  border-radius: 8px;
+  background: var(--background-modifier-hover);
+}
+.sticky-timer-kind button {
+  flex: 1;
+  height: 28px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+}
+.sticky-timer-kind button.is-active {
+  background: var(--background-primary);
+  box-shadow: var(--shadow-s);
+  color: var(--text-normal);
+}
+.sticky-timer-field {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.sticky-timer-field input {
+  width: 120px;
+  height: auto;
+  padding: 4px 0;
+  border: none;
+  border-bottom: 2px solid var(--background-modifier-border);
+  border-radius: 0;
+  background: transparent;
+  font-size: 36px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.sticky-timer-field input:focus {
+  border-bottom-color: var(--interactive-accent);
+  box-shadow: none;
+}
+.sticky-timer-field input.is-invalid {
+  border-bottom-color: var(--text-error);
+}
+.sticky-timer-field input::-webkit-inner-spin-button,
+.sticky-timer-field input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+.sticky-timer-field span {
+  color: var(--text-muted);
+}
+.sticky-timer-quick {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+.sticky-timer-quick button {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  font-size: var(--font-ui-small);
+}
+
+/* 任务行里的番茄记录：收成一个 🍅，悬停显示时间 */
+.sticky-pomo {
+  display: inline-block;
+  margin: 0 1px;
+  font-size: 0.9em;
+  line-height: 1;
+  cursor: default;
+  transition: transform 0.15s ease;
+}
+.sticky-pomo:hover {
+  transform: scale(1.25);
+}
+
+/* 「在跑」「下一步」只对光标所在的任务起作用，光标不在任务行上时变暗 */
+.sticky-task-btn {
+  transition: opacity 0.15s ease;
+}
+.workspace-leaf-content:not(.sticky-on-task) .sticky-task-btn {
+  opacity: 0.35;
+}
+
+/* 任务行里的在跑标记：⏳ 预计时刻（蓝）→ 到点 ⏰ 待验收（橙）→ 任务完成后淡显 */
+.sticky-wait {
+  display: inline-block;
+  margin: 0 2px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 0.8em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+  white-space: nowrap;
+  vertical-align: 0.05em;
+  cursor: default;
+}
+.sticky-wait.is-running {
+  background: rgba(var(--color-blue-rgb), 0.13);
+  color: rgb(var(--color-blue-rgb));
+}
+.sticky-wait.is-due {
+  background: rgba(var(--color-orange-rgb), 0.16);
+  color: rgb(var(--color-orange-rgb));
+}
+.sticky-wait.is-done {
+  color: var(--text-faint);
+  font-weight: normal;
+}
+
+/* 对话框里显示正在操作的任务 */
+.sticky-modal-task {
+  margin: -4px 0 16px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sticky-wait-eta,
+.sticky-modal-hint {
+  margin-bottom: 16px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+.sticky-wait-eta {
+  margin-top: -6px;
+  text-align: center;
+}
+.sticky-wait-eta.is-invalid {
+  color: var(--text-error);
+}
+.sticky-timer-modal .sticky-timer-quick {
+  margin-bottom: 4px;
+}
+
+/* 一句话输入：下一步、杂念 */
+.sticky-text-modal {
+  width: min(420px, calc(100vw - 32px));
+}
+.sticky-text-modal input[type="text"] {
+  width: 100%;
+  height: 38px;
+  margin-bottom: 8px;
+  font-size: var(--font-ui-medium);
+}

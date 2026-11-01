@@ -1,9 +1,10 @@
 {
-	"id": "sticky-log",
-	"name": "Sticky Log",
-	"version": "0.1.1",
-	"minAppVersion": "1.0.0",
-	"description": "点击项目卡片的 log 属性，以置顶小窗口（便签）打开项目日志。",
-	"author": "local",
+	"id": "cairn",
+	"name": "Cairn",
+	"version": "0.6.0",
+	"minAppVersion": "1.5.7",
+	"description": "把活交给 AI 之后，从容地接回来：置顶便签日志、番茄钟、在跑提醒、下一步、杂念，以及菜单栏入口。",
+	"author": "longyongchao",
+	"authorUrl": "https://github.com/longyongchao",
 	"isDesktopOnly": true
 }

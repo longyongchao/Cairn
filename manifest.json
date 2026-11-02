@@ -1,7 +1,7 @@
 {
-	"id": "cairn",
-	"name": "Cairn",
-	"version": "0.7.0",
+	"id": "cairn-todo",
+	"name": "Cairn Todo",
+	"version": "0.7.1",
 	"minAppVersion": "1.5.7",
 	"description": "Hand work off to AI and pick it back up calmly: a pinned log note, pomodoro timer, wait reminders, next steps, and a thought inbox.",
 	"author": "longyongchao",

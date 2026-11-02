@@ -1,4 +1,4 @@
-# Cairn 石标
+# Cairn Todo 石标
 
 > 一块一块垒，走得慢也不迷路。
 > *Stack one stone at a time. Find your way back.*
@@ -103,7 +103,7 @@ Cairn 写进笔记的所有东西都是普通 Markdown 文本，不是链接，�
 Cairn 还没有上架 Obsidian 社区插件市场，目前可以这样安装：
 
 - **BRAT**：装好 [BRAT](https://github.com/TfTHacker/obsidian42-brat) 插件后，选择 Add Beta plugin，填入 `longyongchao/Cairn`。
-- **手动**：从 [Releases](https://github.com/longyongchao/Cairn/releases) 下载最新版的 `main.js`、`manifest.json`、`styles.css`，放进 vault 的 `.obsidian/plugins/cairn/`，重启 Obsidian，在 设置 → 第三方插件 里启用 Cairn。
+- **手动**：从 [Releases](https://github.com/longyongchao/Cairn/releases) 下载最新版的 `main.js`、`manifest.json`、`styles.css`，放进 vault 的 `.obsidian/plugins/cairn-todo/`，重启 Obsidian，在 设置 → 第三方插件 里启用 Cairn Todo。
 
 ## 使用约定
 

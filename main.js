@@ -823,7 +823,7 @@ module.exports = class CairnPlugin extends Plugin {
         } catch {
             return;
         }
-        this.tray.setToolTip("Cairn");
+        this.tray.setToolTip("Cairn Todo");
         const pop = () => this.tray?.popUpContextMenu(this.trayMenu(remote));
         this.tray.on("click", pop);
         this.tray.on("right-click", pop);

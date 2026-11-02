@@ -292,3 +292,22 @@ li[data-task="/"] > .task-list-item-checkbox:checked::after,
   --checklist-done-decoration: none;
   --checklist-done-color: var(--text-normal);
 }
+
+/* 已取消任务 [-] 的复选框：灰色空框加一道横线，和打勾的已完成区分开；
+   正文保留删除线，颜色比已完成更淡 */
+.task-list-item-checkbox[data-task="-"]:checked,
+li[data-task="-"] > .task-list-item-checkbox:checked,
+.HyperMD-task-line[data-task="-"] .task-list-item-checkbox:checked {
+  background: linear-gradient(var(--text-faint), var(--text-faint)) center / 55% 2px no-repeat;
+  border-color: var(--text-faint);
+}
+.task-list-item-checkbox[data-task="-"]:checked::after,
+li[data-task="-"] > .task-list-item-checkbox:checked::after,
+.HyperMD-task-line[data-task="-"] .task-list-item-checkbox:checked::after {
+  display: none;
+}
+.HyperMD-task-line[data-task="-"],
+.task-list-item[data-task="-"] {
+  --checklist-done-decoration: line-through;
+  --checklist-done-color: var(--text-faint);
+}
